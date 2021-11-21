@@ -27,7 +27,7 @@
     <canvas id="c" width="100%" height="100%" style="-webkit-tap-highlight-color: transparent;"></canvas> 
 
     <script>
-      // Fix me
+
 var canvas = document.getElementById('c');
 var host = window.location.host;
 var context = canvas.getContext("2d");
@@ -44,18 +44,47 @@ debug("Test");
 
 world = {};
 
-//XXX: TODO Make this prettier!
-function drawCircle(context,entity) {
+function drawPikachu(context, entity) {
+    var img = document.createElement("img");
+    img.src = "https://www.clipartmax.com/png/full/251-2515350_awesome-pokemon-pictures-free-download-pikachu-icon-pikachu-png-icon.png";
     with(context) {
-        beginPath();                
+        beginPath();              
         lineWidth = 3;
         var x = entity["x"];
         var y = entity["y"];
-        //moveTo(x,y);
+        drawImage(img, x, y, 25, 25);
+        stroke();                                
+    }
+}
+
+// The heart pattern is based on and modified from the cubic bezier curve MDN example:
+// https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Drawing_shapes#bezier_and_quadratic_curves
+// Drawing shapes with canvas by Mozilla Contributors is licensed under CC-BY-SA 2.5
+// the example used hardcoded value, I converted to based on the x,y coordinates
+function getHeartPattern(x, y) {
+    return [
+        [x, y - 3, x - 5, y - 15, x - 25, y - 15],
+        [x - 55, y - 15, x - 55, y + 22.5, x - 55, y + 22.5],
+        [x - 55, y + 40, x - 35, y + 62, x, y + 80],
+        [x + 35, y + 62, x + 55, y + 40, x + 55, y + 22.5],
+        [x + 55, y + 22.5, x + 55, y - 15, x + 25, y - 15],
+        [x + 10, y - 15, x, y - 3, x, y]
+    ]
+}
+
+function drawHeart(context, entity) {
+    with(context) {
+        beginPath();
+        var x = entity["x"];
+        var y = entity["y"];
+        var radius = entity["radius"];
         fillStyle = entity["colour"];
         strokeStyle = fillStyle;
-        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        var patterns = getHeartPattern(x, y);
+        for (pattern of patterns) {
+            bezierCurveTo(...pattern);
+        }
+        fill();
     }
 }
 
@@ -83,7 +112,12 @@ function renderFrame() {
     clearFrame();
     for (var key in world) {
         var entity = world[key];
-        drawCircle(context,prepEntity(entity));
+        var type = entity["type"];
+        if (type == "pikachu") {
+            drawPikachu(context, prepEntity(entity));
+        } else {
+            drawHeart(context, prepEntity(entity));
+        }
     }
 }
 
@@ -124,8 +158,12 @@ function getPosition(e) {
 function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
-    //XXX: Send a XHTML Request that updates the entity you just modified!
+    var updateData = {};
+    updateData[entity] = data;
+    var dataString = JSON.stringify(updateData);
+    socket.send(dataString);
 }
+
 var counter = 0;
 function addEntityWithoutName(data) {
     var name = "X"+(counter++)%100;
@@ -229,20 +267,31 @@ mouse = (function() {
 })();
 
 // Add the application specific mouse listeners!
-//XXX: TODO Make these prettier!
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    addEntityWithoutName({
+        'x': x,
+        'y': y,
+        'type': 'heart', 
+        'colour':'royalblue'
+    });
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    addEntityWithoutName({
+        'x': x,
+        'y': y,
+        'type': 'heart', 
+        'colour':'crimson'
+    });
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
-                          'radius':10});
+    addEntityWithoutName({
+        'x': x,
+        'y': y,
+        'type': 'pikachu'
+    });
 });
-
 
 function update() {
     drawFrame();
@@ -253,7 +302,7 @@ function wsSetup() {
     var url = "ws://"+host+"/subscribe";   
     socket = new WebSocket(url);
     socket.onopen = function() {
-        //XXX: TODO What are you going to do here?
+        debug("WebSocket opened");
     };
     socket.onerror = function(msg) {
         debug("WebSocket Error:" + msg.data);
@@ -261,7 +310,14 @@ function wsSetup() {
     socket.onmessage = function(msg) {  
         try {
             debug("WebSocket Recv:" + msg.data);
-            //XXX: TODO What are you going to do here?            
+            var data = JSON.parse(msg.data);
+            if (data) {
+                for (let key in data) {
+                    world[key] = data[key];
+                }
+                drawNextFrame();
+                drawFrame();
+            }
         } catch (e) {
             alert("socket on message: " + e);
         }
