@@ -76,15 +76,17 @@ class World:
 
 myWorld = World()        
 
-def send_all_json(msg):
+def send_all(msg):
     for client in clients:
-        client.put(msg)
+        client.put( msg )
 
-def set_listener( entity, data ):
-    msg = json.dumps({
+def send_all_json(obj):
+    send_all(json.dumps(obj))
+
+def set_listener(entity, data):
+    send_all_json({
         entity: data
     })
-    send_all_json(msg)
 
 
 myWorld.add_set_listener( set_listener )
