@@ -17,6 +17,12 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Citations
+============
+The websocket code from `sockets.py` uses Professor Abram Hindle's example from: https://github.com/abramhindle/WebSocketsExamples/blob/master/chat.py
+The canvas drawing in `static/index.html` used code from my previous assignment: https://github.com/zhpeng811/CMPUT404-assignment-ajax/blob/master/static/index.html
+
+
 Contributors / Licensing
 ========================
 
